@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Sistema Personal</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      margin: 0;
+      padding: 20px;
+      max-width: 500px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+    }
+    .card {
+      background: white;
+      padding: 15px;
+      border-radius: 15px;
+      margin-bottom: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    button {
+      border: none;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #111827;
+      color: white;
+    }
+    input {
+      padding: 6px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      width: 70%;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .done {
+      text-decoration: line-through;
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Mi Sistema Personal 🚀</h1>
+
+<div class="card">
+  <h3>Hábitos diarios</h3>
+  <input id="newHabit" placeholder="Nuevo hábito...">
+  <button onclick="addHabit()">+</button>
+  <div id="habits"></div>
+  <p>Progreso: <span id="progress">0</span>%</p>
+</div>
+
+<div class="card">
+  <h3>Tareas del día</h3>
+  <input id="newTask" placeholder="Nueva tarea...">
+  <button onclick="addTask()">+</button>
+  <div id="tasks"></div>
+</div>
+
+<div class="card">
+  <h3>Modo Enfoque (25 min)</h3>
+  <p id="timer">25:00</p>
+  <button onclick="startTimer()">Iniciar</button>
+  <button onclick="pauseTimer()">Pausar</button>
+  <button onclick="resetTimer()">Reset</button>
+</div>
+
+<div class="card">
+  <h3>Progreso</h3>
+  <canvas id="chart"></canvas>
+</div>
+
+<button onclick="closeDay()">Cerrar Día y Guardar</button>
+
+<script>
+let habits = JSON.parse(localStorage.getItem("habits")) || [];
+let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+let history = JSON.parse(localStorage.getItem("history")) || [];
+
+function save() {
+  localStorage.setItem("habits", JSON.stringify(habits));
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+  localStorage.setItem("history", JSON.stringify(history));
+}
+
+function render() {
+  const habitsDiv = document.getElementById("habits");
+  habitsDiv.innerHTML = "";
+  habits.forEach((h, i) => {
+    habitsDiv.innerHTML += `
+      <div class="row">
+        <span class="${h.done ? 'done' : ''}">${h.text}</span>
+        <div>
+          <button onclick="toggleHabit(${i})">✔</button>
+          <button onclick="deleteHabit(${i})">X</button>
+        </div>
+      </div>`;
+  });
+
+  const tasksDiv = document.getElementById("tasks");
+  tasksDiv.innerHTML = "";
+  tasks.forEach((t, i) => {
+    tasksDiv.innerHTML += `
+      <div class="row">
+        <span class="${t.done ? 'done' : ''}">${t.text}</span>
+        <button onclick="toggleTask(${i})">✔</button>
+      </div>`;
+  });
+
+  updateProgress();
+}
+
+function addHabit() {
+  const input = document.getElementById("newHabit");
+  if (!input.value) return;
+  habits.push({ text: input.value, done: false });
+  input.value = "";
+  save();
+  render();
+}
+
+function deleteHabit(i) {
+  habits.splice(i,1);
+  save();
+  render();
+}
+
+function toggleHabit(i) {
+  habits[i].done = !habits[i].done;
+  save();
+  render();
+}
+
+function addTask() {
+  const input = document.getElementById("newTask");
+  if (!input.value) return;
+  tasks.push({ text: input.value, done: false });
+  input.value = "";
+  save();
+  render();
+}
+
+function toggleTask(i) {
+  tasks[i].done = !tasks[i].done;
+  save();
+  render();
+}
+
+function updateProgress() {
+  if (habits.length === 0) {
+    document.getElementById("progress").innerText = 0;
+    return;
+  }
+  const done = habits.filter(h => h.done).length;
+  const percent = Math.round((done / habits.length) * 100);
+  document.getElementById("progress").innerText = percent;
+}
+
+let time = 1500;
+let interval;
+
+function startTimer() {
+  if (interval) return;
+  interval = setInterval(() => {
+    if (time > 0) {
+      time--;
+      updateTimer();
+    }
+  }, 1000);
+}
+
+function pauseTimer() {
+  clearInterval(interval);
+  interval = null;
+}
+
+function resetTimer() {
+  pauseTimer();
+  time = 1500;
+  updateTimer();
+}
+
+function updateTimer() {
+  const min = Math.floor(time/60);
+  const sec = time%60;
+  document.getElementById("timer").innerText =
+    min + ":" + (sec<10?"0":"") + sec;
+}
+
+function closeDay() {
+  const done = habits.filter(h => h.done).length;
+  const percent = habits.length === 0 ? 0 :
+    Math.round((done / habits.length) * 100);
+
+  const today = new Date().toLocaleDateString();
+  history.push({ date: today, score: percent });
+
+  habits.forEach(h => h.done = false);
+  tasks = [];
+  save();
+  render();
+  updateChart();
+}
+
+function updateChart() {
+  const ctx = document.getElementById("chart");
+  new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: history.map(h => h.date),
+      datasets: [{
+        label: "Progreso %",
+        data: history.map(h => h.score),
+        borderWidth: 3
+      }]
+    },
+    options: {
+      scales: {
+        y: { min: 0, max: 100 }
+      }
+    }
+  });
+}
+
+render();
+updateChart();
+updateTimer();
+</script>
+
+</body>
+</html>
