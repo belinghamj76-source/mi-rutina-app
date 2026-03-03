@@ -92,12 +92,13 @@ let habits = JSON.parse(localStorage.getItem("habits")) || [];
 let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 let history = JSON.parse(localStorage.getItem("history")) || [];
 let streak = JSON.parse(localStorage.getItem("streak")) || 0;
-
+let lastCompletedDate = localStorage.getItem("lastCompletedDate") || null;
 function save() {
   localStorage.setItem("habits", JSON.stringify(habits));
   localStorage.setItem("tasks", JSON.stringify(tasks));
   localStorage.setItem("history", JSON.stringify(history));
   localStorage.setItem("streak", JSON.stringify(streak));
+  localStorage.setItem("lastCompletedDate", lastCompletedDate);
 }
 
 function render() {
@@ -214,11 +215,31 @@ function closeDay() {
   const today = new Date().toLocaleDateString();
   history.push({ date: today, score: percent });
 
-  if (percent >= 70) {
-    streak++;
+const today = new Date();
+const todayStr = today.toDateString();
+
+if (percent >= 70) {
+
+  if (lastCompletedDate) {
+    const lastDate = new Date(lastCompletedDate);
+    const diffTime = today - lastDate;
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+    if (diffDays === 1) {
+      streak++;
+    } else if (diffDays > 1) {
+      streak = 1;
+    }
   } else {
-    streak = 0;
+    streak = 1;
   }
+
+  lastCompletedDate = todayStr;
+
+} else {
+  streak = 0;
+  lastCompletedDate = null;
+}
 
   habits.forEach(h => h.done = false);
   tasks = [];
