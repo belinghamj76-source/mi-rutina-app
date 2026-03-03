@@ -100,8 +100,7 @@ function save() {
   localStorage.setItem("streak", JSON.stringify(streak));
   localStorage.setItem("lastCompletedDate", lastCompletedDate);
   localStorage.setItem("xp", JSON.stringify(xp));
-localStorage.setItem("level", JSON.stringify(level));
-}
+  localStorage.setItem("level", JSON.stringify(level));}
 
 function render() {
   document.getElementById("streak").innerText = streak;
